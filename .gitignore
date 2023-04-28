@@ -1,0 +1,13 @@
+# Visual Studio 2015 user specific files
+venv/*
+.idea/*
+dist/*
+build/*
+output/*
+f1/*
+f2/*
+
+# Binary Files
+#.idea/*
+main.ico
+main.spec
