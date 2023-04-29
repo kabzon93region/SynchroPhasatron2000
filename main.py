@@ -7,6 +7,67 @@ import time
 import os
 
 
+def WCFG():
+    windowCFG = window = tk.Toplevel() #tk.Tk()
+    windowCFG.protocol("WM_DELETE_WINDOW", lambda: closeWCFG(windowCFG))
+    windowCFG.title("Новое окно")
+    xw = 865  # задаем ширину окна
+    yw = 420  # задаем высоту окна
+    xspos = (windowCFG.winfo_screenwidth() - xw) / 2  # рассчитываем отступ по ширине для создания окна на экране по центру
+    yspos = (windowCFG.winfo_screenheight() - yw) / 2  # рассчитываем отступ по высоте для создания окна на экране по центру
+    windowCFG.geometry("%dx%d+%d+%d" % (xw, yw, xspos, yspos))  # задаем ширину, высоту окна и отступы по ширине и высоте для создания окна
+    #windowCFG.resizable(False, False)  # задаем возможность изменять размер окна по ширине, высоте
+    windowCFG.config(bg=bgcolor)  # задаем цвет фона в hex формате
+    windowCFG.grab_set() 
+
+    for i in range(14):
+        windowCFG.grid_rowconfigure(i, minsize=30)
+        if i <= 8:
+            windowCFG.grid_columnconfigure(i, minsize=100)
+
+    entc1 = tk.Entry(windowCFG)
+    entc1.grid(row=0, column=0, columnspan=5, rowspan=1, sticky='nwes')
+    entc2 = tk.Entry(windowCFG)
+    entc2.grid(row=1, column=0, columnspan=5, rowspan=1, sticky='nwes')
+
+
+    wcfgBtn1=tk.Button(windowCFG, text="OK", bg=bgcolor, fg=txtcolor, activebackground=actbgcolor,
+                        activeforeground=acttxtcolod, font=fontvar, command=lambda: closeWCFG(windowCFG))
+    wcfgBtn1.grid(row=0, column=7, columnspan=1, rowspan=1, sticky='nwes')
+    wcfgBtn2=tk.Button(windowCFG, text="Отмена", bg=bgcolor, fg=txtcolor, activebackground=actbgcolor,
+                        activeforeground=acttxtcolod, font=fontvar, command=lambda: closeWCFG(windowCFG))
+    wcfgBtn2.grid(row=1, column=7, columnspan=1, rowspan=1, sticky='nwes')
+
+    wcfgBtn3=tk.Button(windowCFG, text="Выбрать исходную папку", bg=bgcolor, fg=txtcolor, activebackground=actbgcolor,
+                        activeforeground=acttxtcolod, font=fontvar, command=lambda: btn1_f(entc1))
+    wcfgBtn3.grid(row=0, column=5, columnspan=1, rowspan=1, sticky='nwes')
+    wcfgBtn4=tk.Button(windowCFG, text="Выбрать конечную папку", bg=bgcolor, fg=txtcolor, activebackground=actbgcolor,
+                        activeforeground=acttxtcolod, font=fontvar, command=lambda: btn2_f(entc2))
+    wcfgBtn4.grid(row=1, column=5, columnspan=1, rowspan=1, sticky='nwes')
+
+    wcfgBtn3=tk.Button(windowCFG, text="Сохранить", bg=bgcolor, fg=txtcolor, activebackground=actbgcolor,
+                        activeforeground=acttxtcolod, font=fontvar, command=lambda: btn1_f(entc1))
+    wcfgBtn3.grid(row=0, column=6, columnspan=1, rowspan=1, sticky='nwes')
+    wcfgBtn4=tk.Button(windowCFG, text="Удалить", bg=bgcolor, fg=txtcolor, activebackground=actbgcolor,
+                        activeforeground=acttxtcolod, font=fontvar, command=lambda: btn2_f(entc2))
+    wcfgBtn4.grid(row=1, column=6, columnspan=1, rowspan=1, sticky='nwes')
+
+    dir_lb = tk.Listbox(windowCFG, bg=bgcolor, fg=txtcolor, selectbackground=actbgcolor, selectforeground=acttxtcolod, font=fontvar)
+    dir_lb.grid(row=2, column=0, sticky='nwes', columnspan=8, rowspan=13)
+
+    dir_lb.insert('end', "C:\Python\pyProjects\\test_bkp_copy\\f1===>>>C:\Python\pyProjects\\test_bkp_copy\\f2")
+    dir_lb.insert('end', "C:\Python\pyProjects\\test_bkp_copy\\f3===>>>C:\Python\pyProjects\\test_bkp_copy\\f4")
+
+
+def closeWCFG(W: tk.Tk):
+    try:
+        btn4.config(state="normal")
+    except:
+        print("error: no found window as tk.Tk()")
+    finally:                
+        W.grab_release()
+        W.destroy() 
+
 
 # задаем пути к папкам 1 и 2
 window = tk.Tk()
@@ -30,7 +91,8 @@ window.config(bg=bgcolor)  # задаем цвет фона в hex формат�
 
 for i in range(5):
     window.grid_rowconfigure(i, minsize=60)
-    window.grid_columnconfigure(i, minsize=128)
+    if i <= 5:
+        window.grid_columnconfigure(i, minsize=128)
 
 ent1 = tk.Entry(window)
 ent2 = tk.Entry(window)
@@ -44,27 +106,37 @@ btn2 = tk.Button(window, text="Выбрать конечную папку", bg=b
 btn2.grid(row=1, column=0, sticky='nwes', columnspan=3)
 btn3 = tk.Button(window, text="Старт", bg=bgcolor, fg=txtcolor, activebackground=actbgcolor, activeforeground=acttxtcolod,
                 font=fontvar, command=lambda: cff_timer(str(ent1.get()), str(ent2.get()), textarea))
-btn3.grid(row=0, column=3, sticky='nwes', columnspan=2, rowspan=2)
-print(btn3.cget('text'))
-def btn1_f(ent: tk.Entry, console_area: tk.Text):
+btn3.grid(row=0, column=4, sticky='nwes', columnspan=1, rowspan=2)
+#print(btn3.cget('text'))
+btn4 = tk.Button(window, text="Настройки", bg=bgcolor, fg=txtcolor, activebackground=actbgcolor, activeforeground=acttxtcolod, font=fontvar, command=lambda: btn4_f())
+btn4.grid(row=0, column=3, sticky='nwes', columnspan=1, rowspan=2)
+    
+def btn4_f():
+    btn4.config(state="disabled")
+    WCFG()
+
+
+def btn1_f(ent: tk.Entry, console_area: tk.Text = None):
     ent.delete(0, 'end')
     ent.insert(0, str(Path(filedialog.askdirectory(title="Выберите исходную папку, из которой будет произведена копия(синхронизация)"))))
     now = dt.now().strftime("%H:%M:%S:%f")
-    console_area.insert('end', f"\n{now}: Исходная папка выбрана: '{ent.get()}'\nОбъем диска: Общий = {round(shutil.disk_usage(ent.get()).total/1073741824, 2)} GB , Используется = {round(shutil.disk_usage(ent.get()).used/1073741824, 2)} GB , Свободно = {round(shutil.disk_usage(ent.get()).free/1073741824, 2)} GB\n\n")
-    console_area.see('end')
-    window.update()
+    if console_area != None:
+        console_area.insert('end', f"\n{now}: Исходная папка выбрана: '{ent.get()}'\nОбъем диска: Общий = {round(shutil.disk_usage(ent.get()).total/1073741824, 2)} GB , Используется = {round(shutil.disk_usage(ent.get()).used/1073741824, 2)} GB , Свободно = {round(shutil.disk_usage(ent.get()).free/1073741824, 2)} GB\n\n")
+        console_area.see('end')
+        window.update()
     print(f"{now}: Исходная папка выбрана: '{ent.get()}'")  
     
 
 
 
-def btn2_f(ent: tk.Entry, console_area: tk.Text):
+def btn2_f(ent: tk.Entry, console_area: tk.Text = None):
     ent.delete(0, 'end')
     ent.insert(0, str(Path(filedialog.askdirectory(title="Выберите конечную папку, в которую будет произведена копия(синхронизация)"))))
     now = dt.now().strftime("%H:%M:%S:%f")
-    console_area.insert('end', f"\n{now}: Конечная папка выбрана: '{ent.get()}'\nОбъем диска: Общий = {round(shutil.disk_usage(ent.get()).total/1073741824, 2)} GB , Используется = {round(shutil.disk_usage(ent.get()).used/1073741824, 2)} GB , Свободно = {round(shutil.disk_usage(ent.get()).free/1073741824, 2)} GB\n\n")
-    console_area.see('end')
-    window.update()
+    if console_area != None:
+        console_area.insert('end', f"\n{now}: Конечная папка выбрана: '{ent.get()}'\nОбъем диска: Общий = {round(shutil.disk_usage(ent.get()).total/1073741824, 2)} GB , Используется = {round(shutil.disk_usage(ent.get()).used/1073741824, 2)} GB , Свободно = {round(shutil.disk_usage(ent.get()).free/1073741824, 2)} GB\n\n")
+        console_area.see('end')        
+        window.update()
     print(f"{now}: Конечная папка выбрана: '{ent.get()}'")
 
 
