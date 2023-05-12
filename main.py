@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*- 
-# coding: utf8
 from datetime import datetime as dt
 from tkinter import filedialog
 from pathlib import Path
