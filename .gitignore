@@ -6,6 +6,7 @@ build/*
 output/*
 f1/*
 f2/*
+logs/*
 
 # Binary Files
 #.idea/*

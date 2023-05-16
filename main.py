@@ -1,21 +1,29 @@
 from datetime import datetime as dt
 from tkinter import filedialog
 from pathlib import Path
+from loguru import logger
+from tkinter import ttk
 import tkinter as tk
+#import customtkinter as ctk
 import shutil
 import time
 import os
 
+logger.add("./logs/log.log", format="{time:DD.MM.YYYY HH:mm:ss:(x)} - {level} - {message}", level="DEBUG", rotation="25 MB", compression="zip")
+logger.info("Программа запущена.")
 
 dirList = []
 try:
-    cfgFile = open("config.cfg", 'r', encoding='Windows-1251')
+    cfgFile = open("config.cfg", 'r') #, encoding='Windows-1251')
+    logger.debug(f"файл конфигурации '{os.path.abspath(os.curdir)}\\{cfgFile.name}' успешно открыт.")
     for line in cfgFile:
         strLine = line.replace("\n", '')
         dirList.append(strLine)
+        logger.debug(f"загружена строка '{strLine}' из файла конфигурации.")
     cfgFile.close()
 except FileNotFoundError:
-    cfgFile = open("config.cfg", 'w', encoding='Windows-1251')
+    cfgFile = open("config.cfg", 'w') #, encoding='Windows-1251')
+    logger.error(f"Файл конфигурации '{os.path.abspath(os.curdir)}\\{cfgFile.name}' не найден, по этому был создан пустой.")
     cfgFile.close()
 
 
@@ -27,17 +35,23 @@ actbgcolor = '#575A63'
 txtcolor = '#B8BAC0'
 acttxtcolod = '#15161A'
 title_str = "Синхрофазатрон 2000"
-#icon_str = "main.ico"
+icon_str = "./main.ico"
 fontvar = ('Consolas', 10)
 xw = 640  # задаем ширину окна
 yw = 300  # задаем высоту окна
 xspos = (window.winfo_screenwidth() - xw) / 2  # рассчитываем отступ по ширине для создания окна на экране по центру
 yspos = (window.winfo_screenheight() - yw) / 2  # рассчитываем отступ по высоте для создания окна на экране по центру
-
+window.protocol("WM_DELETE_WINDOW", lambda: closeWindow(window))
 window.title(title_str)  # задаем название окна
 window.geometry("%dx%d+%d+%d" % (xw, yw, xspos, yspos))  # задаем ширину, высоту окна и отступы по ширине и высоте для создания окна
 window.resizable(False, False)  # задаем возможность изменять размер окна по ширине, высоте
-#window.iconbitmap(icon_str)  # задаем иконку окна
+
+try:
+    window.iconbitmap(icon_str)  # задаем иконку окна
+except:
+    logger.error(f"не найден файл иконки в папке запуска программы {os.path.abspath(os.curdir)}\\{Path(icon_str)}")
+    logger.error(f"не найден файл иконки в папке работы программы {os.path.dirname(__file__)}\\{Path(icon_str)}")
+
 window.config(bg=bgcolor)  # задаем цвет фона в hex формате
 
 for i in range(5):
@@ -51,14 +65,22 @@ ent2 = tk.Entry(window)
 textarea = tk.Text(window, bg=bgcolor, fg=txtcolor, font=fontvar, height=1)
 textarea.grid(row=2, column=0, sticky='nwes', columnspan=5, rowspan=3)
 
-btn1 = tk.Button(window, text="Выбрать исходную папку", bg=bgcolor, fg=txtcolor, activebackground=actbgcolor, activeforeground=acttxtcolod, font=fontvar, command=lambda: btn1_f(ent1, textarea))
-btn1.grid(row=0, column=0, sticky='nwes', columnspan=3)
-btn2 = tk.Button(window, text="Выбрать конечную папку", bg=bgcolor, fg=txtcolor, activebackground=actbgcolor, activeforeground=acttxtcolod, font=fontvar, command=lambda: btn2_f(ent2, textarea))
-btn2.grid(row=1, column=0, sticky='nwes', columnspan=3)
+deleting = tk.BooleanVar()
+deleting.set(False)
+deleting_checkbutton = tk.Checkbutton(window, text="Удалять синхронизованные файлы", variable=deleting, bg=bgcolor, fg=txtcolor, activebackground=actbgcolor, activeforeground=acttxtcolod, font=fontvar)
+deleting_checkbutton.grid(row=0, column=0, sticky='nwes', columnspan=3)
+
+prbr = ttk.Progressbar(orient="horizontal", length=100, value=0)
+prbr.grid(row=1, column=0, sticky='nwes', columnspan=3)
+
+#btn1 = tk.Button(window, text="Выбрать исходную папку", bg=bgcolor, fg=txtcolor, activebackground=actbgcolor, activeforeground=acttxtcolod, font=fontvar, command=lambda: btn1_f(ent1, textarea))
+#btn1.grid(row=0, column=0, sticky='nwes', columnspan=3)
+#btn2 = tk.Button(window, text="Выбрать конечную папку", bg=bgcolor, fg=txtcolor, activebackground=actbgcolor, activeforeground=acttxtcolod, font=fontvar, command=lambda: btn2_f(ent2, textarea))
+#btn2.grid(row=1, column=0, sticky='nwes', columnspan=3)
 btn3 = tk.Button(window, text="Старт", bg=bgcolor, fg=txtcolor, activebackground=actbgcolor, activeforeground=acttxtcolod,
                 font=fontvar, command=lambda: startSync(textarea))
 btn3.grid(row=0, column=4, sticky='nwes', columnspan=1, rowspan=2)
-#print(btn3.cget('text'))
+
 btn4 = tk.Button(window, text="Настройки", bg=bgcolor, fg=txtcolor, activebackground=actbgcolor, activeforeground=acttxtcolod, font=fontvar, command=lambda: btn4_f())
 btn4.grid(row=0, column=3, sticky='nwes', columnspan=1, rowspan=2)
     
@@ -75,7 +97,7 @@ def btn1_f(ent: tk.Entry, console_area: tk.Text = None):
         console_area.insert('end', f"\n{now}: Исходная папка выбрана: '{ent.get()}'\nОбъем диска: Общий = {round(shutil.disk_usage(ent.get()).total/1073741824, 2)} GB , Используется = {round(shutil.disk_usage(ent.get()).used/1073741824, 2)} GB , Свободно = {round(shutil.disk_usage(ent.get()).free/1073741824, 2)} GB\n\n")
         console_area.see('end')
         window.update()
-    print(f"{now}: Исходная папка выбрана: '{ent.get()}'")  
+    logger.info(f"Исходная папка выбрана: '{ent.get()}'")  
     
 
 
@@ -88,151 +110,279 @@ def btn2_f(ent: tk.Entry, console_area: tk.Text = None):
         console_area.insert('end', f"\n{now}: Конечная папка выбрана: '{ent.get()}'\nОбъем диска: Общий = {round(shutil.disk_usage(ent.get()).total/1073741824, 2)} GB , Используется = {round(shutil.disk_usage(ent.get()).used/1073741824, 2)} GB , Свободно = {round(shutil.disk_usage(ent.get()).free/1073741824, 2)} GB\n\n")
         console_area.see('end')        
         window.update()
-    print(f"{now}: Конечная папка выбрана: '{ent.get()}'")
+    logger.info(f"Конечная папка выбрана: '{ent.get()}'")
 
 
 def startSync(console_area: tk.Text):
-    start_timer = time.time()  # точка отсчета времени работы программы
-
-    for list in dirList:
-        msgList = list.split(" ===>>> ")            
-        dir1 = str(msgList[0])
-        dir2 = str(msgList[1])
-        cff_timer(str(dir1), str(dir2), console_area)
-
-    end_timer = time.time() - start_timer  # собственно время работы программы
-    now = dt.now().strftime("%H:%M:%S:%f")
-    console_area.insert('end', f"\n{now}: Синхронизация списка завершена за {end_timer} секунд\n")
-    console_area.see('end')
-    window.update()
-    print(f"{now}: Синхронизация списка завершена за {end_timer} секунд")
-    
-
-def cff_timer(source_folder, dest_folder, console_area: tk.Text):
     if(btn3.cget('text')=="Старт"):
-        #btn3.config(state="disabled")
-        start_time = time.time()  # точка отсчета времени работы программы
+        start_timer = time.time()  # точка отсчета времени работы программы
+        
 
-        btn3.config(text="Стоп")        
-
-        copy_files(source_folder, dest_folder, console_area)
+        for list in dirList:
+            msgList = list.split(" ===>>> ")            
+            dir1 = str(msgList[0])
+            dir2 = str(msgList[1])
+            btn3.config(text="Стоп") 
+            if deleting.get():
+                logger.debug(f"задача передана на исполнение: {str(dir1)}, {str(dir2)}, {deleting.get()}")
+                cff_timer(str(dir1), str(dir2), console_area, deleting.get())            
+                logger.debug(f"задача завершена: {str(dir1)}, {str(dir2)}, {deleting.get()}")
+                
+                btn3.config(text="Старт")        
+                window.update()
+            else:
+                cff_timer(str(dir1), str(dir2), console_area)        
+                btn3.config(text="Старт")        
+                window.update()
 
         btn3.config(text="Старт")
 
-        end_time = time.time() - start_time  # собственно время работы программы
+        end_timer = time.time() - start_timer  # собственно время работы программы
         now = dt.now().strftime("%H:%M:%S:%f")
-        console_area.insert('end', f"\n{now}: Синхронизация завершена за {end_time} секунд\n")
+        console_area.insert('end', f"\n{now}: Синхронизация списка завершена за {end_timer} секунд\n")
         console_area.see('end')
         window.update()
-        print(f"{now}: Синхронизация завершена за {end_time} секунд")
-        #btn3.config(state="normal")
+        logger.info(f"Синхронизация списка завершена за {end_timer} секунд")
     else:
-        btn3.config(text="Старт")
+        btn3.config(text="Старт")   
+        cff_timer.__closure__     
+        window.update()
+
+def cff_timer(source_folder, dest_folder, console_area: tk.Text, delete: bool = False):
+    start_time = time.time()  # точка отсчета времени работы программы
+
+    prbr.configure(value=0)
+    window.update()
+    logger.info(f"Задача синхронизации запущена: ")
+    copy_files(source_folder, dest_folder, console_area, delete)
+    logger.info(f"Задача синхронизации завершена: {source_folder}, {dest_folder}, {delete}")    
+    prbr.configure(value=100)
+    window.update()    
+
+    end_time = time.time() - start_time  # собственно время работы программы
+    now = dt.now().strftime("%H:%M:%S:%f")
+    console_area.insert('end', f"\n{now}: Синхронизация завершена за {end_time} секунд\n")
+    console_area.see('end')
+    window.update()
+    logger.info(f"Синхронизация завершена за {end_time} секунд")
 
 
-def copy_files(source_folder=None, dest_folder=None, console_area: tk.Text = None):  # рекурсивная функция для копирования файлов
+@logger.catch
+def copy_files(source_folder, dest_folder, console_area: tk.Text, delete: bool = False):  # рекурсивная функция для копирования файлов
+    prbr.configure(value=1)
     if len(source_folder) <= 3 or len(dest_folder) <= 3:
         now = dt.now().strftime("%H:%M:%S:%f")
         console_area.insert('end', f"\n{now}: !ОШИБКА! : Не заданы пути папок для синхронизации\n")
         console_area.see('end')
         window.update()
-        print(f"{now}: !ОШИБКА! : Не заданы пути папок для синхронизации")
+        logger.error(f"Не заданы пути папок для синхронизации")
         btn3.config(state="normal")
+        prbr.configure(value=0)
     else:
+        prbr.configure(value=2)
         for root, dirs, files in os.walk(source_folder):  # проходимся по всем файлам и подпапкам внутри source_folder для каждого файла в папке
-            if(btn3.cget('text') == "Старт"):
+            if(btn3.cget('text') == "Старт"): 
+                    prbr.configure(value=0)                   
+                    window.update()
                     break
             for filename in files:
                 if(btn3.cget('text') == "Старт"):
+                    prbr.configure(value=0)
+                    window.update()
                     break
                 source_path = os.path.join(root, filename)  # получаем полный путь к файлу
-                #now = dt.now().strftime("%H:%M:%S:%f")
-                #print(f"{now}: source_path={source_path}")
+                now = dt.now().strftime("%H:%M:%S:%f")
+                logger.debug(f"абсолютный путь к исходному элементу = {source_path}")
+                prbr.configure(value=10)
+                window.update()
 
-                relative_path = os.path.relpath(source_path, source_folder)  # очищаем имя файла от пути к нему
+                #os.path.relpath(source_path, source_folder) = os.path.relpath(source_path, source_folder)  # очищаем имя файла от пути к нему
                 #now = dt.now().strftime("%H:%M:%S:%f")
-                #print(f"{now}: relative_path={relative_path}")
+                logger.debug(f"имя исходного элемента = {os.path.relpath(source_path, source_folder)}")
+                prbr.configure(value=15)
+                window.update()
 
-                dest_path = os.path.join(dest_folder, relative_path)  # получаем путь к файлу в папке 2, сохраняя структуру папок
-                #now = dt.now().strftime("%H:%M:%S:%f")
-                #print(f"{now}: dest_path={dest_path}")
+                dest_path = os.path.join(dest_folder, os.path.relpath(source_path, source_folder))  # получаем путь к файлу в папке 2, сохраняя структуру папок
+                now = dt.now().strftime("%H:%M:%S:%f")
+                logger.debug(f"абсолютный путь к конечному элементу = {dest_path}")
+                prbr.configure(value=20)
+                window.update()
 
                 dest_dir = os.path.dirname(dest_path)  # получаем путь к папке 2 к исходному файлу из папки 1
                 #now = dt.now().strftime("%H:%M:%S:%f")
-                #print(f"{now}: dest_dir={dest_dir}")
+                logger.debug(f"абсолютный путь к папке конечного элемента = {dest_dir}")
+                prbr.configure(value=25)
+                window.update()
 
                 if not os.path.exists(dest_dir):  # если папки для файла в папке 2 не существует, создаем ее
                     os.makedirs(dest_dir)
                     now = dt.now().strftime("%H:%M:%S:%f")
                     console_area.insert('end', f"\n{now}: Создана папка: '{dest_dir}'\n")
                     console_area.see('end')
+                    prbr.configure(value=30)
                     window.update()
-                    print(f"{now}: Создана папка: '{dest_dir}'")
+                    logger.info(f"Создана папка: '{dest_dir}'")
 
                 if os.path.exists(dest_path):  # если файл существует в папке 2, проверяем, нужно ли его заменить
                     source_stat = os.stat(source_path)  # получаем статы файла из папки 1
                     #now = dt.now().strftime("%H:%M:%S:%f")
-                    #print(f"{now}: source_stat={source_stat}")
+                    logger.debug(f"параметры исходного файла = {source_stat}")
+                    prbr.configure(value=30)
+                    window.update()
 
                     dest_stat = os.stat(dest_path)  # получаем статы файла из папки 2
                     #now = dt.now().strftime("%H:%M:%S:%f")
-                    #print(f"{now}: dest_stat={dest_stat}")
+                    logger.debug(f"параметры конечного файла = {dest_stat}")
+                    prbr.configure(value=35)
+                    window.update()
 
-                    if source_stat.st_mtime > dest_stat.st_mtime and source_stat.st_size >= dest_stat.st_size:  # сравниваем дату изменения и размер файлов
+                    if source_stat.st_mtime > dest_stat.st_mtime and source_stat.st_size == dest_stat.st_size:  # сравниваем дату изменения и размер файлов
                         shutil.copy2(source_path, dest_path)  # копируем файл из папки 1 в папку 2 с заменой если первый новее или больше
                         now = dt.now().strftime("%H:%M:%S:%f")
                         console_area.insert('end', f"\n{now}: Файл '{source_path}' скопирован в '{dest_path}' с заменой, т.к. новее\n")
                         console_area.see('end')
+                        prbr.configure(value=60)
                         window.update()
-                        print(f"{now}: Файл '{source_path}' скопирован в '{dest_path}' с заменой, т.к. новее")
-                        # os.remove(source_path)  # удаляем скопированный файл из папки 1
+                        logger.info(f"Файл '{source_path}' скопирован в '{dest_path}' с заменой, т.к. новее")
+                        if delete == True:
+                            try:
+                                os.remove(source_path)  # удаляем скопированный файл из папки 1
+                                now = dt.now().strftime("%H:%M:%S:%f")
+                                console_area.insert('end', f"\n{now}: Файл '{source_path}' удален после синхронизации.\n")
+                                console_area.see('end')
+                                logger.info(f"Файл '{source_path}' удален после синхронизации.") 
+                                prbr.configure(value=100)
+                                window.update()
+                            except PermissionError:
+                                prbr.configure(value=00)
+                                window.update()
+                                now = dt.now().strftime("%H:%M:%S:%f")
+                                console_area.insert('end', f"\n{now}: !ОШИБКА! Файл '{source_path}' не удален, т.к. нет прав\n")
+                                console_area.see('end')
+                                window.update()
+                                logger.error(f"Файл '{source_path}' не удален, т.к. нет прав.")
 
-                    elif source_stat.st_mtime >= dest_stat.st_mtime and source_stat.st_size > dest_stat.st_size:  # сравниваем дату изменения и размер файлов
+                    elif source_stat.st_mtime == dest_stat.st_mtime and source_stat.st_size > dest_stat.st_size:  # сравниваем дату изменения и размер файлов
                         shutil.copy2(source_path, dest_path)  # копируем файл из папки 1 в папку 2 с заменой если первый новее или больше
+                        prbr.configure(value=60)
+                        window.update()
                         now = dt.now().strftime("%H:%M:%S:%f")
                         console_area.insert('end', f"\n{now}: Файл '{source_path}' скопирован в '{dest_path}' с заменой, т.к. больше\n")
                         console_area.see('end')
                         window.update()
-                        print(f"{now}: Файл '{source_path}' скопирован в '{dest_path}' с заменой, т.к. больше")
-                        # os.remove(source_path)  # удаляем скопированный файл из папки 1
+                        logger.info(f"Файл '{source_path}' скопирован в '{dest_path}' с заменой, т.к. больше")
+                        if delete == True:
+                            try:
+                                os.remove(source_path)  # удаляем скопированный файл из папки 1
+                                now = dt.now().strftime("%H:%M:%S:%f")
+                                console_area.insert('end', f"\n{now}: Файл '{source_path}' удален после синхронизации.\n")
+                                console_area.see('end')
+                                logger.info(f"Файл '{source_path}' удален после синхронизации.") 
+                                prbr.configure(value=100)
+                                window.update()
+                            except PermissionError:
+                                prbr.configure(value=00)
+                                window.update()
+                                now = dt.now().strftime("%H:%M:%S:%f")
+                                console_area.insert('end', f"\n{now}: !ОШИБКА! Файл '{source_path}' не удален, т.к. нет прав\n")
+                                console_area.see('end')
+                                window.update()
+                                logger.error(f"Файл '{source_path}' не удален, т.к. нет прав.")
 
-                    elif source_stat.st_mtime <= dest_stat.st_mtime and source_stat.st_size < dest_stat.st_size:
-                        # os.remove(source_path)  # удаляем не скопированный файл из папки 1
+                    elif source_stat.st_mtime > dest_stat.st_mtime and source_stat.st_size > dest_stat.st_size:  # сравниваем дату изменения и размер файлов
+                        shutil.copy2(source_path, dest_path)  # копируем файл из папки 1 в папку 2 с заменой если первый новее или больше
+                        prbr.configure(value=60)
+                        window.update()
                         now = dt.now().strftime("%H:%M:%S:%f")
-                        console_area.insert('end', f"\n{now}: Файл '{source_path}' удален, т.к. меньше и не новее\n")
+                        console_area.insert('end', f"\n{now}: Файл '{source_path}' скопирован в '{dest_path}' с заменой, т.к. больше и новее\n")
                         console_area.see('end')
                         window.update()
-                        print(f"{now}: Файл '{source_path}' удален, т.к. меньше и не новее")
+                        logger.info(f"Файл '{source_path}' скопирован в '{dest_path}' с заменой, т.к. больше и новее.")
+                        if delete == True:
+                            try:
+                                os.remove(source_path)  # удаляем скопированный файл из папки 1
+                                now = dt.now().strftime("%H:%M:%S:%f")
+                                console_area.insert('end', f"\n{now}: Файл '{source_path}' удален после синхронизации.\n")
+                                console_area.see('end')
+                                logger.info(f"Файл '{source_path}' удален после синхронизации.") 
+                                prbr.configure(value=100)
+                                window.update()
+                            except PermissionError:
+                                prbr.configure(value=00)
+                                window.update()
+                                now = dt.now().strftime("%H:%M:%S:%f")
+                                console_area.insert('end', f"\n{now}: !ОШИБКА! Файл '{source_path}' не удален, т.к. нет прав\n")
+                                console_area.see('end')
+                                window.update()
+                                logger.error(f"Файл '{source_path}' не удален, т.к. нет прав.")
 
-                    elif source_stat.st_mtime < dest_stat.st_mtime and source_stat.st_size <= dest_stat.st_size:
-                        # os.remove(source_path)  # удаляем не скопированный файл из папки 1
-                        now = dt.now().strftime("%H:%M:%S:%f")
-                        console_area.insert('end', f"\n{now}: Файл '{source_path}' удален, т.к. старее и не больше\n")
-                        console_area.see('end')
-                        window.update()
-                        print(f"{now}: Файл '{source_path}' удален, т.к. старее и не больше")
+                    elif source_stat.st_mtime <= dest_stat.st_mtime and source_stat.st_size <= dest_stat.st_size:
+                        if delete == True:
+                            try:
+                                os.remove(source_path)  # удаляем не скопированный файл из папки 1
+                                prbr.configure(value=80)
+                                window.update()
+                                now = dt.now().strftime("%H:%M:%S:%f")
+                                console_area.insert('end', f"\n{now}: Файл '{source_path}' удален, т.к. не больше и не новее\n")
+                                console_area.see('end')
+                                window.update()
+                                logger.info(f"Файл '{source_path}' удален, т.к. не больше и не новее.")
+                            except PermissionError:
+                                prbr.configure(value=00)
+                                window.update()
+                                now = dt.now().strftime("%H:%M:%S:%f")
+                                console_area.insert('end', f"\n{now}: !ОШИБКА! Файл '{source_path}' не удален, т.к. нет прав\n")
+                                console_area.see('end')
+                                window.update()
+                                logger.error(f"Файл '{source_path}' не удален, т.к. нет прав.")
+
+                            
 
                 else:  # если файла в папке 2 вообще нет
                     shutil.copy2(source_path, dest_path)  # копируем его туда
+                    prbr.configure(value=60)
+                    window.update()
                     now = dt.now().strftime("%H:%M:%S:%f")
                     console_area.insert('end', f"\n{now}: Файл '{source_path}' скопирован в '{dest_path}'\n")
                     console_area.see('end')
                     window.update()
-                    print(f"{now}: Файл '{source_path}' скопирован в '{dest_path}'")
-                    # os.remove(source_path)  # удаляем скопированный файл из папки 1
+                    logger.info(f"Файл '{source_path}' скопирован в '{dest_path}'")
+                    if delete == True:
+                        try:
+                            os.remove(source_path)  # удаляем скопированный файл из папки 1
+                            now = dt.now().strftime("%H:%M:%S:%f")
+                            console_area.insert('end', f"\n{now}: Файл '{source_path}' удален после синхронизации.\n")
+                            console_area.see('end')
+                            logger.info(f"Файл '{source_path}' удален после синхронизации.") 
+                            prbr.configure(value=100)
+                            window.update()
+                        except PermissionError:
+                            prbr.configure(value=00)
+                            window.update()
+                            now = dt.now().strftime("%H:%M:%S:%f")
+                            console_area.insert('end', f"\n{now}: !ОШИБКА! Файл '{source_path}' не удален, т.к. нет прав\n")
+                            console_area.see('end')
+                            window.update()
+                            logger.error(f"Файл '{source_path}' не удален, т.к. нет прав.")
 
             for dirname in dirs:  # для каждой подпапки в source_folder рекурсивно вызываем эту же функцию
                 source_path = os.path.join(root, dirname)  # получаем полный путь к файлу
                 #now = dt.now().strftime("%H:%M:%S:%f")
-                #print(f"{now}: source_path={source_path}")
+                logger.debug(f"абсолютный путь к исходному элементу = {source_path}")
+                prbr.configure(value=15)
+                window.update()
 
-                relative_path = os.path.relpath(source_path, source_folder)  # очищаем имя файла от пути к нему
+                #os.path.relpath(source_path, source_folder) = os.path.relpath(source_path, source_folder)  # очищаем имя файла от пути к нему
                 #now = dt.now().strftime("%H:%M:%S:%f")
-                #print(f"{now}: relative_path={relative_path}")
+                logger.debug(f"имя исходного элемента = {os.path.relpath(source_path, source_folder)}")
+                prbr.configure(value=20)
+                window.update()
 
-                dest_path = os.path.join(dest_folder, relative_path)  # получаем путь к файлу в папке 2, сохраняя структуру папок
+                dest_path = os.path.join(dest_folder, os.path.relpath(source_path, source_folder))  # получаем путь к файлу в папке 2, сохраняя структуру папок
                 #now = dt.now().strftime("%H:%M:%S:%f")
-                #print(f"{now}: dest_path={dest_path}")
+                logger.debug(f"абсолютный путь к конечному элементу = {dest_path}")
+                prbr.configure(value=25)
+                window.update()
 
                 copy_files(source_path, dest_path, console_area)
         # for
@@ -249,7 +399,7 @@ def WCFG():
     xspos = (windowCFG.winfo_screenwidth() - xw) / 2  # рассчитываем отступ по ширине для создания окна на экране по центру
     yspos = (windowCFG.winfo_screenheight() - yw) / 2  # рассчитываем отступ по высоте для создания окна на экране по центру
     windowCFG.geometry("%dx%d+%d+%d" % (xw, yw, xspos, yspos))  # задаем ширину, высоту окна и отступы по ширине и высоте для создания окна
-    #windowCFG.resizable(False, False)  # задаем возможность изменять размер окна по ширине, высоте
+    windowCFG.resizable(False, False)  # задаем возможность изменять размер окна по ширине, высоте
     windowCFG.config(bg=bgcolor)  # задаем цвет фона в hex формате
     windowCFG.grab_set() 
 
@@ -337,41 +487,42 @@ def WCFG():
         else:
             tk.messagebox.showinfo("Информационное сообщение", "Не выбран элемент списка для удаления.") #, command=open_info)
 
-
+    @logger.catch
     def okWCFG(W: tk.Tk, dirlb: tk.Listbox):
         dirList.clear()
         for x in dirlb.get(0, 'end'):
             dirList.append(x)
 
-        cfgFile = open("config.cfg", 'w', encoding='Windows-1251')
+        cfgFile = open("config.cfg", 'w') #, encoding='Windows-1251')
         for line in dirList:
             cfgFile.write(f"{line}\n")
+            logger.debug(f"строка '{line}' внесена в файл настройки.")
         cfgFile.close()
+        logger.debug(f"файл конфигурации '{os.path.abspath(os.curdir)}\\{cfgFile.name}' успешно сохранен.")
 
         try:
             btn4.config(state="normal")
         except:
-            print("error: no found window as tk.Tk()")
+            logger.error(f"что-то с главным окном")
         finally:
             W.grab_release()
             W.destroy() 
 
-
+@logger.catch
 def cencelWCFG(W: tk.Tk):
     try:
         btn4.config(state="normal")
     except:
-        print("error: no found window as tk.Tk()")
+        logger.error(f"что-то с главным окном")
     finally:                
         W.grab_release()
         W.destroy() 
 
 
-
-
-
-
-
+@logger.catch
+def closeWindow(W: tk.Tk):
+    logger.info("Программа остановлена.")
+    W.destroy()
 
 
 window.mainloop()
